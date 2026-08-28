@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Road AI Monitor</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #1E1E1E;
+    --panel: #252525;
+    --panel-2: #2D2D2D;
+    --border: #404040;
+    --text: #ffffff;
+    --text-muted: #ffffff;
+    --text-dim: #ffffff;
+
+    --sev-nhe: #F4C430;
+    --sev-nhe-soft: rgba(244,196,48,0.16);
+    --sev-vua: #FF8C42;
+    --sev-vua-soft: rgba(255,140,66,0.16);
+    --sev-nang: #FF3B3B;
+    --sev-nang-soft: rgba(255,59,59,0.18);
+
+    --accent: #34D399;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ---------- Layout shell ---------- */
+  .app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    height: 68px;
+    flex: none;
+    background: linear-gradient(180deg, var(--panel) 0%, #181818 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 24px;
+    z-index: 1200;
+  }
+
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2A2A2A, #1A1A1A);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+  }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand-text h1 {
+    margin: 0; font-size: 15.5px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .brand-text p {
+    margin: 1px 0 0; font-size: 11.5px; color: var(--text-muted); font-weight: 500;
+  }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text-muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    padding: 5px 11px;
+    border-radius: 999px;
+    flex: none;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(52,211,153,0.6);
+    animation: statusPulse 2s infinite;
+  }
+  @keyframes statusPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(52,211,153,0.55); }
+    70%  { box-shadow: 0 0 0 6px rgba(52,211,153,0); }
+    100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+  }
+
+  .stats-strip {
+    display: flex; gap: 8px; margin-left: auto; flex: none;
+  }
+  .stat-chip {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+padding: 7px 13px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .stat-chip .n { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .chip-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot-total { background: var(--text-muted); }
+  .dot-nhe { background: var(--sev-nhe); }
+  .dot-vua { background: var(--sev-vua); }
+  .dot-nang { background: var(--sev-nang); box-shadow: 0 0 8px rgba(255,59,59,0.7); }
+
+  .clock {
+    font-size: 11.5px; color: var(--text-dim); text-align: right; flex: none;
+    padding-left: 16px; border-left: 1px solid var(--border);
+  }
+  .clock b { color: var(--text-muted); font-weight: 600; }
+
+  /* ---------- Body: map + sidebar ---------- */
+  .body-row {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+
+  #map {
+    flex: 1;
+    height: 100%;
+    background: var(--bg);
+  }
+
+  .sidebar {
+    width: 340px;
+    flex: none;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .sidebar-head {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    flex: none;
+  }
+  .sidebar-head h2 {
+    margin: 0 0 10px; font-size: 12.5px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-muted); font-weight: 700;
+  }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .search-box svg { flex: none; opacity: 0.5; }
+  .search-box input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 13px; width: 100%;
+    font-family: 'Inter', sans-serif;
+  }
+  .search-box input::placeholder { color: var(--text-dim); }
+
+  .filters {
+    display: flex; gap: 6px; padding: 10px 16px; flex: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .filter-chip {
+    font-size: 12px; font-weight: 600; color: var(--text-muted);
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 6px 11px; border-radius: 999px; cursor: pointer;
+    white-space: nowrap; user-select: none;
+    transition: all .15s ease;
+  }
+  .filter-chip:hover { border-color: #4A4A4A; }
+  .filter-chip.active {
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border-color: #555555;
+  }
+
+  .feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px 16px;
+  }
+  .feed::-webkit-scrollbar { width: 8px; }
+  .feed::-webkit-scrollbar-thumb { background: #353535; border-radius: 8px; }
+
+  .feed-item {
+    display: flex; gap: 11px;
+    padding: 11px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    margin-bottom: 4px;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .feed-item:hover { background: var(--panel-2); }
+  .feed-item.selected {
+    background: var(--panel-2);
+    border-color: #505050;
+  }
+.feed-marker {
+    flex: none; width: 10px; height: 10px; border-radius: 50%;
+    margin-top: 5px;
+  }
+
+  .feed-body { min-width: 0; flex: 1; }
+  .feed-top {
+    display: flex; justify-content: space-between; gap: 8px;
+    align-items: baseline;
+  }
+  .feed-road {
+    font-size: 13.5px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .feed-time { font-size: 10.5px; color: var(--text-dim); flex: none; font-family: 'JetBrains Mono', monospace; }
+  .feed-meta { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+  .feed-meta .mono { color: var(--text-muted); }
+  .feed-sev {
+    display: inline-block; margin-top: 6px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.2px;
+    padding: 2px 8px; border-radius: 5px;
+  }
+  .sev-nhe-txt  { color: var(--sev-nhe); background: var(--sev-nhe-soft); }
+  .sev-vua-txt  { color: var(--sev-vua); background: var(--sev-vua-soft); }
+  .sev-nang-txt { color: var(--sev-nang); background: var(--sev-nang-soft); }
+
+  .feed-empty {
+    text-align: center; color: var(--text-dim); font-size: 12.5px;
+    padding: 40px 20px;
+  }
+
+  /* ---------- Leaflet marker + popup theming ---------- */
+  .rm-marker { position: relative; display: flex; align-items: center; justify-content: center; }
+  .rm-dot {
+    border-radius: 50%;
+    border: 2px solid rgba(30,30,30,0.9);
+    position: relative;
+    z-index: 2;
+  }
+  .rm-nhe  .rm-dot { background: var(--sev-nhe);  box-shadow: 0 0 10px rgba(244,196,48,0.55); }
+  .rm-vua  .rm-dot { background: var(--sev-vua);  box-shadow: 0 0 12px rgba(255,140,66,0.6); }
+  .rm-nang .rm-dot { background: var(--sev-nang); box-shadow: 0 0 14px rgba(255,59,59,0.75); }
+
+  .rm-ring {
+    position: absolute; border-radius: 50%;
+    border: 2px solid var(--sev-nang);
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(0.5);
+    opacity: 0.7;
+    animation: radarPing 2.2s ease-out infinite;
+    z-index: 1;
+  }
+  @keyframes radarPing {
+    0%   { transform: translate(-50%,-50%) scale(0.5); opacity: 0.7; }
+    100% { transform: translate(-50%,-50%) scale(2.6); opacity: 0; }
+  }
+
+  .leaflet-popup-content-wrapper {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  }
+  .leaflet-popup-tip { background: var(--panel); border: 1px solid var(--border); }
+  .leaflet-popup-content { margin: 14px 16px; }
+  .leaflet-popup-close-button { color: var(--text-muted) !important; }
+
+  .pop-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .pop-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .pop-head h3 { margin: 0; font-size: 14.5px; font-weight: 700; }
+  .pop-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .pop-row { display: flex; justify-content: space-between; gap: 16px; font-size: 12.5px; }
+.pop-row span:first-child { color: var(--text-muted); }
+  .pop-row span:last-child { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .pop-badge {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 4px 10px; border-radius: 6px;
+  }
+
+  /* ---------- Legend ---------- */
+  .legend {
+    position: absolute; left: 16px; bottom: 16px;
+    background: rgba(30,30,30,0.92);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    z-index: 900;
+    backdrop-filter: blur(4px);
+  }
+  .legend h4 {
+    margin: 0 0 8px; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-dim); font-weight: 700;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--text-muted); }
+  .legend-item:last-child { margin-bottom: 0; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .stats-strip { display: none; }
+    .clock { display: none; }
+    .body-row { flex-direction: column; }
+    .sidebar { width: 100%; height: 40%; border-left: none; border-top: 1px solid var(--border); }
+    #map { height: 60%; }
+    .admin-btn { opacity: 0.35; pointer-events: none; cursor: not-allowed; }
+    .admin-panel { display: none !important; }
+  }
+
+  /* ---------- Admin mode ---------- */
+  .admin-btn {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    padding: 6px 13px; border-radius: 8px;
+    cursor: pointer; user-select: none;
+    transition: all .15s; flex: none;
+  }
+  .admin-btn:hover { border-color: #FF3B3B; color: #FF3B3B; }
+  .admin-btn.active {
+    background: rgba(255,59,59,0.13);
+    border-color: #FF3B3B;
+    color: #FF3B3B;
+    box-shadow: 0 0 10px rgba(255,59,59,0.2);
+  }
+
+  .train-btn {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    padding: 6px 13px; border-radius: 8px;
+    cursor: pointer; user-select: none;
+    transition: all .15s; flex: none;
+  }
+  .train-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .train-btn.running {
+    background: rgba(52,211,153,0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 10px rgba(52,211,153,0.2);
+  }
+
+  /* Train modal */
+  .train-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    z-index: 2000; align-items: center; justify-content: center;
+  }
+  .train-overlay.open { display: flex; }
+  .train-modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+padding: 24px 28px;
+    width: 420px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  .train-modal h3 {
+    margin: 0 0 6px; font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .train-modal h3 svg { flex: none; }
+  .train-modal p {
+    margin: 0 0 18px; font-size: 12.5px; color: var(--text-muted); line-height: 1.55;
+  }
+  .train-field { margin-bottom: 14px; }
+  .train-field label {
+    display: block; font-size: 11.5px; font-weight: 600;
+    color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.3px;
+  }
+  .train-field select, .train-field input[type=number] {
+    width: 100%; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 13px;
+    padding: 8px 11px; outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color .15s;
+  }
+  .train-field select:focus, .train-field input[type=number]:focus { border-color: var(--accent); }
+  .train-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .btn-cancel {
+    flex: 1; padding: 9px; border-radius: 8px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--text-muted); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: border-color .15s;
+  }
+  .btn-cancel:hover { border-color: #555; }
+  .btn-start-train {
+    flex: 2; padding: 9px; border-radius: 8px;
+    background: rgba(52,211,153,0.15); border: 1px solid var(--accent);
+    color: var(--accent); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .btn-start-train:hover { background: rgba(52,211,153,0.25); }
+
+  /* Train progress */
+  .train-progress { margin-top: 18px; display: none; }
+  .train-progress.show { display: block; }
+  .prog-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+  .prog-label { color: var(--text-muted); font-weight: 600; }
+  .prog-pct { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .prog-bar-bg {
+    height: 6px; border-radius: 3px; background: var(--panel-2);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+  .prog-bar-fill {
+    height: 100%; width: 0%; border-radius: 3px;
+    background: linear-gradient(90deg, #34D399, #6EE7B7);
+    transition: width .4s ease;
+  }
+  .prog-log {
+    margin-top: 12px; background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-muted); height: 90px;
+    overflow-y: auto; line-height: 1.7;
+  }
+
+  .admin-panel {
+    width: 600px; flex: none;
+    display: none; flex-direction: column;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    min-height: 0;
+  }
+  .admin-panel.visible { display: flex; }
+
+  .admin-toolbar {
+display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    flex: none; flex-wrap: wrap;
+  }
+  .admin-toolbar-label {
+    font-size: 11.5px; color: var(--text-muted);
+    font-weight: 600; margin-right: 2px;
+  }
+  .grid-preset-btn {
+    font-size: 11.5px; font-weight: 600;
+    padding: 4px 11px; border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text-muted);
+    cursor: pointer; transition: all .15s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .grid-preset-btn:hover { border-color: #FF3B3B; color: #FF3B3B; }
+  .grid-preset-btn.active {
+    background: rgba(255,59,59,0.12);
+    border-color: #FF3B3B; color: #FF3B3B;
+  }
+
+  .video-grid {
+    flex: 1; display: grid;
+    gap: 6px; padding: 10px;
+    min-height: 0; overflow: hidden;
+  }
+
+  .vid-cell {
+    border: 2px solid #FF3B3B;
+    border-radius: 8px;
+    background: #111;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .vid-cell:hover { border-color: #FF6060; box-shadow: 0 0 12px rgba(255,59,59,0.25); }
+  .vid-cell.has-video { cursor: default; }
+  .vid-cell.has-video:hover { border-color: #FF3B3B; }
+
+  .vid-cell video {
+    width: 100%; height: 100%;
+    object-fit: cover; display: block;
+  }
+
+  .vid-label {
+    position: absolute; top: 6px; left: 8px;
+    font-size: 9.5px; font-weight: 700;
+    color: #FF3B3B;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(0,0,0,0.65);
+    padding: 2px 6px; border-radius: 4px;
+    pointer-events: none; z-index: 2;
+  }
+
+  .vid-cell:not(.has-media) {
+    border: 2px dashed #3A3A3A;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .vid-cell:not(.has-media):hover {
+    border-color: #666;
+    background: #1A1A1A;
+    box-shadow: none;
+  }
+
+  .vid-placeholder {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 10px;
+    color: #444; user-select: none;
+    pointer-events: none;
+    transition: color .15s;
+  }
+  .vid-cell:not(.has-media):hover .vid-placeholder { color: #888; }
+
+  .vid-cell.drag-over {
+    border-color: var(--accent) !important;
+    background: rgba(52,211,153,0.08) !important;
+    box-shadow: 0 0 14px rgba(52,211,153,0.25);
+  }
+  .vid-cell.drag-over .vid-placeholder { color: var(--accent); }
+  .vid-cell.drag-over .upload-btn { border-color: var(--accent); }
+
+  .vid-placeholder .upload-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: 10px;
+    border: 1.5px dashed #3A3A3A;
+    transition: border-color .15s, background .15s;
+  }
+  .vid-cell:not(.has-media):hover .upload-btn {
+    border-color: #666; background: rgba(255,255,255,0.04);
+  }
+  .vid-placeholder span { font-size: 11px; font-family: 'Inter', sans-serif; font-weight: 500; }
+/* Update-on-click overlay */
+  .vid-update-hint {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.52);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .18s;
+    pointer-events: none; z-index: 2;
+    font-size: 11px; color: #fff; font-weight: 600;
+    gap: 6px; font-family: 'Inter', sans-serif;
+  }
+  .vid-cell.has-media:hover .vid-update-hint { opacity: 1; }
+
+  .vid-saved-dot {
+    position: absolute; top: 7px; right: 32px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px rgba(52,211,153,0.55);
+    z-index: 4; pointer-events: none;
+  }
+
+  .vid-remove {
+    position: absolute; top: 6px; right: 7px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(0,0,0,0.75);
+    border: 1px solid #FF3B3B;
+    color: #FF3B3B;
+    font-size: 11px; line-height: 20px;
+    text-align: center; cursor: pointer;
+    display: none; z-index: 3;
+    transition: background .12s;
+  }
+  .vid-remove:hover { background: rgba(255,59,59,0.3); }
+  .vid-cell:hover .vid-remove { display: block; }
+  .vid-cell:not(.has-media):hover .vid-remove { display: none; }
+
+  /* Road selector bar */
+  .road-bar {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.78);
+    border-top: 1px solid rgba(255,59,59,0.35);
+    padding: 5px 8px;
+    display: flex; align-items: center; gap: 5px;
+    cursor: pointer; z-index: 4;
+    font-size: 10.5px; color: #888;
+    transition: background .15s, color .15s;
+    font-family: 'Inter', sans-serif;
+  }
+  .road-bar:hover { background: rgba(0,0,0,0.92); color: #ccc; }
+  .road-bar.road-selected { color: #ddd; border-top-color: rgba(52,211,153,0.45); }
+  .road-bar-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .road-dropdown {
+    position: absolute; bottom: 33px; left: 0; right: 0;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; z-index: 20; overflow: hidden;
+    max-height: 160px; overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  }
+  .road-option {
+    padding: 8px 11px; font-size: 11.5px; cursor: pointer;
+    color: var(--text-muted); transition: background .1s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .road-option:hover { background: var(--panel-2); color: var(--text); }
+  .road-option-new { color: var(--accent); border-top: 1px solid var(--border); font-size: 11px; }
+
+  /* Result badge on processed cell */
+  .result-badge {
+    position: absolute; top: 30px; left: 8px;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.2px;
+    padding: 2px 6px; border-radius: 4px;
+    pointer-events: none; z-index: 3;
+  }
+  .result-badge.sev-nhe  { color: var(--sev-nhe);  background: var(--sev-nhe-soft);  }
+  .result-badge.sev-vua  { color: var(--sev-vua);  background: var(--sev-vua-soft);  }
+.result-badge.sev-nang { color: var(--sev-nang); background: var(--sev-nang-soft); }
+
+  /* Train modal sources list */
+  .train-sources { margin-bottom: 14px; }
+  .train-no-data {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; font-size: 12px;
+    color: var(--text-muted); text-align: center;
+  }
+  .train-src-header {
+    font-size: 11.5px; color: var(--text-muted); font-weight: 600; margin-bottom: 6px;
+  }
+  .train-src-list {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+    max-height: 110px; overflow-y: auto;
+  }
+  .train-src-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; font-size: 11px;
+    border-bottom: 1px solid var(--border);
+  }
+  .train-src-item:last-child { border-bottom: none; }
+  .train-src-item.not-ready { opacity: 0.45; }
+  .tsrc-cam { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #FF3B3B; flex: none; width: 44px; }
+  .tsrc-road { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+  .tsrc-ok { flex: none; font-size: 11px; }
+  .train-src-item.ready .tsrc-ok { color: var(--accent); }
+  .train-src-item.not-ready .tsrc-ok { color: #FF8C42; }
+
+  .body-row { position: relative; }
+  .location-pick-hint {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.88); color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 8px;
+    padding: 7px 18px; font-size: 12px; font-weight: 600;
+    z-index: 1100; pointer-events: none; white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(52,211,153,0.25);
+  }
+  .road-bar.location-set { border-top-color: rgba(52,211,153,0.5); }
+  .road-bar.no-location  { border-top-color: rgba(255,140,66,0.5); }
+
+  /* Popup image */
+  .pop-img {
+    width: 100%; max-height: 130px; object-fit: cover;
+    border-radius: 7px; display: block; margin-bottom: 10px;
+    cursor: zoom-in;
+  }
+
+  /* Feed thumbnail */
+  .feed-thumb {
+    width: 52px; height: 40px; flex: none;
+    border-radius: 6px; object-fit: cover;
+    border: 1px solid var(--border); cursor: zoom-in;
+    align-self: center;
+  }
+
+  /* Lightbox */
+  .lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92); z-index: 3000;
+    align-items: center; justify-content: center;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox-img {
+    max-width: 90vw; max-height: 88vh;
+    border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.8);
+    object-fit: contain;
+  }
+  .lightbox-close {
+    position: absolute; top: 18px; right: 22px;
+    color: #fff; font-size: 26px; cursor: pointer;
+    opacity: 0.7; line-height: 1; user-select: none;
+  }
+  .lightbox-close:hover { opacity: 1; }
+  .lightbox-road {
+    position: absolute; bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    color: #fff; font-size: 13px; font-weight: 600;
+background: rgba(0,0,0,0.6); padding: 6px 16px;
+    border-radius: 20px; white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== Top bar ===== -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 20L9 4H12L18 20" stroke="#34D399" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 20L10.5 8" stroke="#565F73" stroke-width="1.4" stroke-dasharray="1.6 2" stroke-linecap="round"/>
+          <circle cx="14.2" cy="13.5" r="2" fill="#FF3B3B"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>ROAD AI MONITOR</h1>
+        <p>Intelligent road defect detection &amp; analysis system</p>
+      </div>
+    </div>
+
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      Active
+    </div>
+
+    <div class="stats-strip" id="statsStrip"></div>
+
+    <button class="admin-btn" id="adminBtn" onclick="toggleAdmin()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="5" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M15 9l5-3v12l-5-3V9z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+        <rect x="2" y="19" width="20" height="1.8" rx=".9" fill="currentColor"/>
+      </svg>
+      ADMIN
+    </button>
+
+    <div class="clock">
+      Updated at<br><b class="mono" id="clockTime">--:--:--</b>
+    </div>
+  </div>
+
+  <!-- ===== Map + Sidebar ===== -->
+  <div class="body-row">
+    <div id="map"></div>
+
+    <!-- ===== Admin Panel ===== -->
+    <div class="admin-panel" id="adminPanel">
+      <div class="admin-toolbar">
+        <span class="admin-toolbar-label">Layout:</span>
+        <div id="gridPresets"></div>
+        <button class="train-btn" onclick="bulkUpload()" title="Select multiple images, auto-fill empty slots in order" style="margin-left:auto">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          + Multi-image
+        </button>
+        <button class="train-btn" id="resetDbBtn" onclick="confirmResetDB()" style="margin-left:8px;border-color:#FF8C42;color:#FF8C42" title="Delete all detection results, keep images & road names">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          RESET DB
+        </button>
+        <button class="train-btn" id="autoBtn" onclick="autoTrain()" style="margin-left:8px;border-color:#A78BFA;color:#A78BFA" title="Auto-read images from pic1/ folder → detect → update map">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          AUTO
+        </button>
+        <button class="train-btn" id="trainBtn" onclick="openTrainModal()" style="margin-left:8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+            <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          </svg>
+          TRAIN
+        </button>
+      </div>
+      <div class="video-grid" id="videoGrid"></div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-head">
+        <h2>Live alerts</h2>
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="11" cy="11" r="7" stroke="#8B93A7" stroke-width="2"/>
+            <path d="M21 21L16.65 16.65" stroke="#8B93A7" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" type="text" placeholder="Search by road name...">
+        </div>
+      </div>
+
+      <div class="filters" id="filters">
+        <div class="filter-chip active" data-filter="all">All</div>
+        <div class="filter-chip" data-filter="nhe">Minor</div>
+        <div class="filter-chip" data-filter="vua">Moderate</div>
+        <div class="filter-chip" data-filter="nang">Severe</div>
+      </div>
+
+      <div class="feed" id="feed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Lightbox ===== -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">✕</span>
+  <img class="lightbox-img" id="lightboxImg" src="" onclick="event.stopPropagation()">
+  <div class="lightbox-road" id="lightboxRoad"></div>
+</div>
+
+<!-- ===== Train Modal ===== -->
+<div class="train-overlay" id="trainOverlay">
+  <div class="train-modal">
+    <h3>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#34D399" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M2 17l10 5 10-5" stroke="#34D399" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M2 12l10 5 10-5" stroke="#34D399" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+      Detect &amp; Save Potholes
+    </h3>
+    <p>Run AI pothole detection on loaded images/videos, save results to the database and display on the map.</p>
+
+    <div class="train-sources" id="trainSources"></div>
+
+    <div class="train-field">
+      <label>Detection model</label>
+      <select id="trainModel">
+        <option value="yolov8n">YOLOv8n — Fast, light</option>
+<option value="yolov8s">YOLOv8s — Balanced</option>
+        <option value="yolov8m" selected>YOLOv8m — Accurate</option>
+        <option value="yolov8l">YOLOv8l — High-end</option>
+      </select>
+    </div>
+
+    <div class="train-progress" id="trainProgress">
+      <div class="prog-header">
+        <span class="prog-label" id="progLabel">Initializing...</span>
+        <span class="prog-pct" id="progPct">0%</span>
+      </div>
+      <div class="prog-bar-bg"><div class="prog-bar-fill" id="progFill"></div></div>
+      <div class="prog-log" id="progLog"></div>
+    </div>
+
+    <div class="train-actions" id="trainActions">
+      <button class="btn-cancel" onclick="closeTrainModal()">Cancel</button>
+      <button class="btn-start-train" id="btnStartTrain" onclick="startTrain()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+          <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+        </svg>
+        Start detection
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+/* ================================================================
+   INTEGRATE REAL AI MODEL LATER
+   ----------------------------------------------------------------
+   Currently loadPotholeData() returns mock/simulated data to build
+   the UI first, as described.
+
+   When the AI model (YOLOv8, etc.) is ready, simply replace the body
+   of loadPotholeData() below with a real API call, as long as the
+   result returns elements with the correct structure as in mockData:
+
+     {
+       id, lat, lng, road,
+       date: "YYYY-MM-DD", time: "HH:MM",
+       sizeCm: number, depthCm: number,
+       severity: "nhe" | "vua" | "nang"
+     }
+
+   Example with a real API:
+     async function loadPotholeData() {
+       const res = await fetch("https://your-ai-api.example.com/detections");
+       if (!res.ok) throw new Error("API error");
+       return await res.json();
+     }
+   ================================================================ */
+
+async function loadPotholeData() {
+  try {
+    const r = await fetch(`${API_URL}/db`);
+    if (!r.ok) return [];
+    const items = await r.json();
+    return items.map(d => ({ ...d, _trained: true }));
+  } catch(e) { return []; }
+}
+
+const SEV_LABEL = { nhe: "Minor pothole", vua: "Moderate pothole", nang: "Severe pothole" };
+
+// Auto-detect: if opened directly as a file or on a port other than 8000 → use full URL
+const API_URL = (location.protocol === 'file:') ? 'http://localhost:8000' : '';
+const SEV_ORDER = { nang: 0, vua: 1, nhe: 2 };
+const SEV_SIZE  = { nhe: 14, vua: 19, nang: 26 };
+
+let map, markersById = {}, allData = [], currentFilter = "all", selectedId = null;
+
+function buildIcon(severity) {
+  const size = SEV_SIZE[severity];
+  const ring = severity === "nang" ? `<span class="rm-ring" style="width:${size}px;height:${size}px;"></span>` : "";
+  return L.divIcon({
+    className: "",
+html: `<div class="rm-marker rm-${severity}">${ring}<span class="rm-dot" style="width:${size}px;height:${size}px;"></span></div>`,
+    iconSize: [size + 20, size + 20],
+    iconAnchor: [(size + 20) / 2, (size + 20) / 2]
+  });
+}
+
+function popupHTML(item) {
+  const img = item.imageData
+    ? `<img src="${item.imageData}" class="pop-img" onclick="openLightbox('${item.id}')">`
+    : '';
+  return `
+    ${img}
+    <div class="pop-head">
+      <span class="pop-dot" style="background:var(--sev-${item.severity})"></span>
+      <h3>${SEV_LABEL[item.severity]}</h3>
+    </div>
+    <div class="pop-rows">
+      <div class="pop-row"><span>Location</span><span>${item.road}</span></div>
+      <div class="pop-row"><span>Time</span><span>${item.date} ${item.time}</span></div>
+      ${item.totalBoxes != null ? `<div class="pop-row"><span>Pothole count</span><span>${item.totalBoxes} points</span></div>` : ''}
+      ${item.sizeCm  ? `<div class="pop-row"><span>Size</span><span>~${item.sizeCm} cm</span></div>` : ''}
+      ${item.conf    ? `<div class="pop-row"><span>Confidence</span><span>${Math.round(item.conf * 100)}%</span></div>` : ''}
+    </div>
+    <span class="pop-badge sev-${item.severity}-txt">${SEV_LABEL[item.severity]}</span>
+  `;
+}
+
+function renderStats(data) {
+  const c = { total: data.length, nhe: 0, vua: 0, nang: 0 };
+  data.forEach(d => c[d.severity]++);
+  document.getElementById("statsStrip").innerHTML = `
+    <div class="stat-chip"><span class="chip-dot dot-total"></span>Total <span class="n">${c.total}</span></div>
+    <div class="stat-chip"><span class="chip-dot dot-nhe"></span>Minor <span class="n">${c.nhe}</span></div>
+    <div class="stat-chip"><span class="chip-dot dot-vua"></span>Moderate <span class="n">${c.vua}</span></div>
+    <div class="stat-chip"><span class="chip-dot dot-nang"></span>Severe <span class="n">${c.nang}</span></div>
+  `;
+}
+
+function renderMap(data) {
+  map = L.map("map", { zoomControl: true }).setView([10.7825, 106.6975], 14);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: "abcd",
+    maxZoom: 20
+  }).addTo(map);
+
+  data.forEach(item => {
+    const marker = L.marker([item.lat, item.lng], { icon: buildIcon(item.severity) })
+      .addTo(map)
+      .bindPopup(popupHTML(item));
+    marker.on("click", () => selectItem(item.id, false));
+    markersById[item.id] = marker;
+  });
+
+  map.on('click', handleMapClick);
+  addLegend();
+}
+
+function handleMapClick(e) {
+  if (pickingLocationForIdx === null) return;
+  const idx = pickingLocationForIdx;
+  cellData[idx] = Object.assign({}, cellData[idx], { location: { lat: e.latlng.lat, lng: e.latlng.lng } });
+  exitLocationPick();
+  const cell = document.querySelector(`.vid-cell[data-idx="${idx}"]`);
+  if (cell) {
+    const bar = cell.querySelector('.road-bar');
+    if (bar) { bar.classList.remove('no-location'); bar.classList.add('location-set'); }
+  }
+  saveCells();
+}
+function addLegend() {}
+
+function renderList() {
+  const feed = document.getElementById("feed");
+  const q = document.getElementById("searchInput").value.trim().toLowerCase();
+
+  let items = allData.filter(d => currentFilter === "all" || d.severity === currentFilter);
+  if (q.length >= 2) items = items.filter(d => d.road.toLowerCase().includes(q));
+  items = [...items].sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity]);
+
+  if (items.length === 0) {
+    feed.innerHTML = `<div class="feed-empty">No matching alerts.</div>`;
+    return;
+  }
+
+  feed.innerHTML = items.map(item => `
+    <div class="feed-item ${item.id === selectedId ? "selected" : ""}" data-id="${item.id}">
+      <span class="feed-marker" style="background:var(--sev-${item.severity})"></span>
+      <div class="feed-body">
+        <div class="feed-top">
+          <span class="feed-road">${item.road}</span>
+          <span class="feed-time">${item.time}</span>
+        </div>
+<span class="feed-sev sev-${item.severity}-txt">${SEV_LABEL[item.severity]}</span>
+      </div>
+      ${item.imageData ? `<img class="feed-thumb" src="${item.imageData}" data-id="${item.id}">` : ''}
+    </div>
+  `).join("");
+
+  feed.querySelectorAll(".feed-item").forEach(el => {
+    el.addEventListener("click", () => selectItem(Number(el.dataset.id), true));
+  });
+  feed.querySelectorAll(".feed-thumb").forEach(img => {
+    img.addEventListener("click", e => {
+      e.stopPropagation();
+      openLightbox(img.dataset.id);
+    });
+  });
+}
+
+function selectItem(id, flyTo) {
+  selectedId = id;
+  const item = allData.find(d => d.id === id);
+  if (!item) return;
+
+  if (flyTo && map) {
+    map.flyTo([item.lat, item.lng], 16, { duration: 0.6 });
+  }
+  const marker = markersById[id];
+  if (marker) marker.openPopup();
+
+  renderList();
+  const sel = document.querySelector(`.feed-item[data-id="${id}"]`);
+  if (sel) sel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function bindFilters() {
+  document.querySelectorAll(".filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      currentFilter = chip.dataset.filter;
+
+      Object.entries(markersById).forEach(([id, marker]) => {
+        const item = allData.find(d => d.id === Number(id));
+        const visible = currentFilter === "all" || item.severity === currentFilter;
+        const el = marker.getElement();
+        if (el) el.style.opacity = visible ? "1" : "0.12";
+      });
+
+      renderList();
+    });
+  });
+}
+
+function bindSearch() {
+  document.getElementById("searchInput").addEventListener("input", renderList);
+}
+
+function startClock() {
+  const el = document.getElementById("clockTime");
+  const tick = () => {
+    el.textContent = new Date().toLocaleTimeString("en-US", { hour12: false });
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+function saveDB() {
+const trained = allData.filter(d => d._trained);
+  fetch(`${API_URL}/db`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(trained)
+  }).catch(() => {});
+}
+
+function saveCells() {
+  try {
+    const entries = Object.entries(cellData)
+      .filter(([, d]) => d && (d.previewThumb || d.mediaData || d.potholeId || d.road))
+      .map(([idx, d]) => ({
+        idx: parseInt(idx),
+        previewThumb: d.previewThumb,
+        mediaData: d.mediaData || null,
+        mediaType: d.mediaType || 'image',
+        road: d.road || null,
+        location: d.location || null,
+        potholeId: d.potholeId || null,
+        result: d.result || null
+      }));
+    localStorage.setItem('roadai_cells', JSON.stringify(entries));
+  } catch(e) {}
+}
+
+function loadCells() {
+  try {
+    const s = localStorage.getItem('roadai_cells');
+    return s ? JSON.parse(s) : [];
+  } catch(e) { return []; }
+}
+
+function restoreCells() {
+  loadCells().forEach(entry => {
+    cellData[entry.idx] = {
+      mediaUrl:     entry.mediaData || entry.previewThumb,
+      mediaType:    'image',
+      previewThumb: entry.previewThumb,
+      mediaData:    entry.mediaData || null,
+      road:         entry.road,
+      location:     entry.location,
+      potholeId:    entry.potholeId,
+      result:       entry.result,
+      _persisted:   true
+    };
+  });
+}
+
+(async function init() {
+  allData = await loadPotholeData();
+  restoreCells();
+  renderStats(allData);
+  renderMap(allData);
+  renderList();
+  bindFilters();
+  bindSearch();
+  startClock();
+  initAdmin();
+})();
+
+/* ================================================================
+   ADMIN MODE
+   ================================================================ */
+
+const GRID_PRESETS = [
+  { label: '2×2', cols: 2, rows: 2 },
+  { label: '3×3', cols: 3, rows: 3 },
+  { label: '4×4', cols: 4, rows: 4 },
+];
+
+let isAdmin = false;
+let adminCols = 4, adminRows = 3;
+const cellData = {}; // idx → { mediaUrl, mediaType, road, location, result }
+let pickingLocationForIdx = null;
+
+function enterLocationPick(idx) {
+  pickingLocationForIdx = idx;
+  if (map) map.getContainer().style.cursor = 'crosshair';
+  let hint = document.getElementById('locationPickHint');
+  if (!hint) {
+    hint = document.createElement('div');
+    hint.id = 'locationPickHint';
+    hint.className = 'location-pick-hint';
+    document.querySelector('.body-row').appendChild(hint);
+  }
+  const camNum = String(idx + 1).padStart(2, '0');
+  hint.textContent = `📍 CAM ${camNum} — Click on the map to set the pothole location`;
+}
+
+function exitLocationPick() {
+  pickingLocationForIdx = null;
+  if (map) map.getContainer().style.cursor = '';
+  const hint = document.getElementById('locationPickHint');
+  if (hint) hint.remove();
+}
+
+function initAdmin() {
+  try {
+    const g = JSON.parse(localStorage.getItem('roadai_grid'));
+    if (g && g.cols && g.rows) { adminCols = g.cols; adminRows = g.rows; }
+  } catch(e) {}
+const container = document.getElementById('gridPresets');
+  GRID_PRESETS.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'grid-preset-btn' + (p.cols === adminCols && p.rows === adminRows ? ' active' : '');
+    btn.textContent = p.label;
+    btn.onclick = () => applyGridPreset(p.cols, p.rows);
+    container.appendChild(btn);
+    if (i < GRID_PRESETS.length - 1) {
+      container.appendChild(Object.assign(document.createElement('span'), {
+        style: 'color:#404040;font-size:12px', textContent: '·'
+      }));
+    }
+  });
+  buildAdminGrid();
+}
+
+function toggleAdmin() {
+  isAdmin = !isAdmin;
+  document.getElementById('adminBtn').classList.toggle('active', isAdmin);
+  document.getElementById('adminPanel').classList.toggle('visible', isAdmin);
+  document.querySelector('.sidebar').style.display = isAdmin ? 'none' : '';
+  if (map) setTimeout(() => map.invalidateSize(), 50);
+}
+
+function applyGridPreset(cols, rows) {
+  adminCols = cols; adminRows = rows;
+  try { localStorage.setItem('roadai_grid', JSON.stringify({cols, rows})); } catch(e) {}
+  document.querySelectorAll('.grid-preset-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', GRID_PRESETS[i].cols === cols && GRID_PRESETS[i].rows === rows);
+  });
+  buildAdminGrid();
+}
+
+function buildAdminGrid() {
+  const grid = document.getElementById('videoGrid');
+  grid.style.gridTemplateColumns = `repeat(${adminCols}, 1fr)`;
+  grid.style.gridTemplateRows    = `repeat(${adminRows}, 1fr)`;
+  grid.innerHTML = '';
+
+  // Bulk drag-and-drop onto the full grid → auto-match by filename
+  grid.addEventListener('dragover', e => e.preventDefault());
+  grid.addEventListener('drop', e => {
+    e.preventDefault();
+    loadFilesIntoGrid(Array.from(e.dataTransfer.files));
+  });
+
+  for (let i = 0; i < adminCols * adminRows; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'vid-cell';
+    cell.dataset.idx = i;
+
+    const d = cellData[i];
+    if (d && d.mediaUrl) {
+      cell.classList.add('has-media');
+      cell.innerHTML = `<span class="vid-label">CAM ${String(i+1).padStart(2,'0')}</span>
+                        ${d._persisted ? '<span class="vid-saved-dot" title="Saved"></span>' : ''}
+                        <div class="vid-update-hint">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                          Update image/video
+                        </div>
+                        <span class="vid-remove" title="Remove">✕</span>`;
+      const mediaEl = d.mediaType === 'image'
+        ? Object.assign(document.createElement('img'),  { src: d.mediaUrl })
+        : Object.assign(document.createElement('video'), { src: d.mediaUrl, autoplay: true, loop: true, muted: true, playsInline: true });
+mediaEl.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+      cell.insertBefore(mediaEl, cell.querySelector('.vid-remove'));
+      if (d.mediaType === 'video') mediaEl.play();
+      attachRoadBar(cell, i, d.road);
+      if (d.result) attachResultBadge(cell, d.result);
+    } else {
+      cell.innerHTML = `
+        <span class="vid-label">CAM ${String(i+1).padStart(2,'0')}</span>
+        <div class="vid-placeholder">
+          <div class="upload-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <span>Upload image / video</span>
+        </div>
+        <span class="vid-remove" title="Remove">✕</span>`;
+    }
+
+    cell.addEventListener('click', () => pickMediaForCell(cell));
+    cell.querySelector('.vid-remove').addEventListener('click', e => { e.stopPropagation(); clearMediaCell(cell); });
+
+    // Drag-and-drop single file onto specific cell
+    cell.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); cell.classList.add('drag-over'); });
+    cell.addEventListener('dragleave', e => { e.stopPropagation(); cell.classList.remove('drag-over'); });
+    cell.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      cell.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) loadMediaInCell(cell, URL.createObjectURL(file), file.type.startsWith('image/') ? 'image' : 'video');
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+function pickMediaForCell(cell) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,video/*';
+  input.onchange = () => {
+    if (!input.files[0]) return;
+    const file = input.files[0];
+    loadMediaInCell(cell, URL.createObjectURL(file), file.type.startsWith('image/') ? 'image' : 'video');
+  };
+  input.click();
+}
+
+function loadMediaInCell(cell, url, type) {
+  const idx = parseInt(cell.dataset.idx);
+
+  // Remove stale media/badges before loading new ones (supports update flow)
+  ['img', 'video'].forEach(tag => {
+    const el = cell.querySelector(tag);
+    if (el) { if (tag === 'video') el.pause(); el.remove(); }
+  });
+  const ph = cell.querySelector('.vid-placeholder');
+  if (ph) ph.remove();
+  const prevBadge = cell.querySelector('.result-badge');
+  if (prevBadge) prevBadge.remove();
+  const prevDot = cell.querySelector('.vid-saved-dot');
+  if (prevDot) prevDot.remove();
+
+  cell.classList.add('has-media');
+
+  const mediaEl = type === 'image'
+    ? Object.assign(document.createElement('img'),   { src: url })
+    : Object.assign(document.createElement('video'), { src: url, autoplay: true, loop: true, muted: true, playsInline: true });
+  mediaEl.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+cell.insertBefore(mediaEl, cell.querySelector('.vid-remove'));
+  if (type === 'video') mediaEl.play();
+
+  const prevData = cellData[idx];
+
+  // New image = new detection: remove old results from map + database
+  if (prevData && prevData.potholeId) {
+    const ei = allData.findIndex(d => d.id === prevData.potholeId);
+    if (ei !== -1) allData.splice(ei, 1);
+    const mkr = markersById[prevData.potholeId];
+    if (mkr) { map.removeLayer(mkr); delete markersById[prevData.potholeId]; }
+    saveDB();
+    renderStats(allData);
+    renderList();
+  }
+
+  cellData[idx] = {
+    mediaUrl:  url, mediaType: type,
+    road:      prevData && prevData.road     || null,
+    location:  prevData && prevData.location || null,
+    potholeId: null,   // reset — new image will create a new entry when training
+    result: null, _persisted: false
+  };
+  attachRoadBar(cell, idx, cellData[idx].road);
+
+  // Async: capture thumbnail (display) + full-res (for future retraining)
+  Promise.all([
+    captureMediaThumbnail(url, type),
+    captureMediaFull(url, type)
+  ]).then(([thumb, full]) => {
+    if (!cellData[idx]) return;
+    if (thumb) cellData[idx].previewThumb = thumb;
+    if (full)  cellData[idx].mediaData    = full;
+    cellData[idx]._persisted = true;
+    saveCells();
+    const savedCell = document.querySelector(`.vid-cell[data-idx="${idx}"]`);
+    if (savedCell && !savedCell.querySelector('.vid-saved-dot')) {
+      const dot = document.createElement('span');
+      dot.className = 'vid-saved-dot'; dot.title = 'Saved';
+      savedCell.appendChild(dot);
+    }
+  }).catch(() => {});
+}
+
+function injectImageIntoCell(idx, base64, road, severity) {
+  const cell = document.querySelector(`.vid-cell[data-idx="${idx}"]`);
+  if (!cell) return;
+
+  // Remove old media elements
+  ['img','video'].forEach(tag => { const el = cell.querySelector(tag); if (el) { if (tag==='video') el.pause(); el.remove(); } });
+  const ph = cell.querySelector('.vid-placeholder');
+  if (ph) ph.remove();
+
+  // Insert annotated image
+  const imgEl = document.createElement('img');
+  imgEl.src = base64;
+  imgEl.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+  cell.classList.add('has-media');
+
+  // Ensure update-hint exists
+  if (!cell.querySelector('.vid-update-hint')) {
+    const hint = document.createElement('div');
+    hint.className = 'vid-update-hint';
+    hint.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Update image/video`;
+    cell.appendChild(hint);
+  }
+  cell.insertBefore(imgEl, cell.querySelector('.vid-remove'));
+
+  // Road bar
+  if (!cell.querySelector('.road-bar')) attachRoadBar(cell, idx, road);
+
+  // Saved dot
+  if (!cell.querySelector('.vid-saved-dot')) {
+    const dot = document.createElement('span');
+    dot.className = 'vid-saved-dot'; dot.title = 'Saved';
+cell.appendChild(dot);
+  }
+
+  // Update cellData
+  cellData[idx] = Object.assign({}, cellData[idx], {
+    mediaUrl: base64, mediaData: base64, previewThumb: base64,
+    mediaType: 'image', _persisted: true
+  });
+
+  if (severity) attachResultBadge(cell, { severity });
+}
+
+function attachRoadBar(cell, idx, road) {
+  const existing = cell.querySelector('.road-bar');
+  if (existing) existing.remove();
+  const bar = document.createElement('div');
+  bar.className = 'road-bar' + (road ? ' road-selected' : '');
+  bar.innerHTML = `
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" style="flex:none;opacity:.6">
+      <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 21s-7-6.25-7-11a7 7 0 0114 0c0 4.75-7 11-7 11z" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    <span class="road-bar-text">${road || 'Select road...'}</span>
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" style="flex:none;opacity:.4">
+      <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>`;
+  bar.addEventListener('click', e => { e.stopPropagation(); showRoadDropdown(cell, idx, bar); });
+  cell.appendChild(bar);
+}
+
+function showRoadDropdown(cell, idx, bar) {
+  document.querySelectorAll('.road-dropdown').forEach(d => d.remove());
+  const dd = document.createElement('div');
+  dd.className = 'road-dropdown';
+  const roads = [...new Set(allData.map(d => d.road))];
+  dd.innerHTML = roads.map(r =>
+    `<div class="road-option" data-road="${r.replace(/"/g,'&quot;')}">${r}</div>`
+  ).join('') + `<div class="road-option road-option-new">＋ Add new road...</div>`;
+  dd.querySelectorAll('.road-option').forEach(opt => {
+    opt.addEventListener('click', e => {
+      e.stopPropagation();
+      if (opt.classList.contains('road-option-new')) {
+        const name = prompt('Road name:');
+        if (name && name.trim()) setRoad(cell, idx, bar, name.trim(), dd);
+      } else {
+        setRoad(cell, idx, bar, opt.dataset.road, dd);
+      }
+    });
+  });
+  cell.appendChild(dd);
+  setTimeout(() => {
+    const h = () => { dd.remove(); document.removeEventListener('click', h); };
+    document.addEventListener('click', h);
+  }, 0);
+}
+
+function setRoad(cell, idx, bar, road, dd) {
+  dd.remove();
+  const existing = allData.find(d => d.road === road);
+  const location = existing ? { lat: existing.lat, lng: existing.lng } : null;
+  cellData[idx] = Object.assign({}, cellData[idx], { road, location });
+  bar.querySelector('.road-bar-text').textContent = road;
+  bar.classList.add('road-selected');
+
+  if (!location) {
+    // New road — must pick location on map
+    bar.classList.add('no-location');
+    enterLocationPick(idx);
+  } else {
+    bar.classList.remove('no-location');
+    bar.classList.add('location-set');
+  }
+  saveCells();
+}
+
+function clearMediaCell(cell) {
+  const idx = parseInt(cell.dataset.idx);
+  cell.classList.remove('has-media');
+['video','img'].forEach(tag => { const el = cell.querySelector(tag); if (el) { if (tag==='video') el.pause(); el.remove(); } });
+  ['.road-bar','.result-badge'].forEach(sel => { const el = cell.querySelector(sel); if (el) el.remove(); });
+  // Keep potholeId + road + location so re-training updates the same entry at the right spot
+  const prev = cellData[idx] || {};
+  delete cellData[idx];
+  if (prev.potholeId || prev.road || prev.location) {
+    cellData[idx] = { potholeId: prev.potholeId || null, road: prev.road || null, location: prev.location || null };
+  }
+  saveCells();
+  if (!cell.querySelector('.vid-placeholder')) {
+    const ph = document.createElement('div');
+    ph.className = 'vid-placeholder';
+    ph.innerHTML = `<div class="upload-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div><span>Upload image / video</span>`;
+    cell.insertBefore(ph, cell.querySelector('.vid-remove'));
+  }
+}
+
+function attachResultBadge(cell, result) {
+  const ex = cell.querySelector('.result-badge'); if (ex) ex.remove();
+  const b = document.createElement('div');
+  b.className = `result-badge sev-${result.severity}`;
+  b.textContent = SEV_LABEL[result.severity];
+  cell.appendChild(b);
+}
+
+/* ================================================================
+   TRAIN MODE
+   ================================================================ */
+
+async function autoTrain() {
+  const btn = document.getElementById('autoBtn');
+  btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none';
+  btn.innerHTML = btn.innerHTML.replace('AUTO', 'Running...');
+
+  try {
+    const r = await fetch(`${API_URL}/auto`, { method: 'POST' });
+    if (!r.ok) {
+      const msg = r.status === 404
+        ? "Folder 'pic1/' not found next to server.py"
+        : `HTTP ${r.status}`;
+      throw new Error(msg);
+    }
+    const data = await r.json();
+    if (!data.results.length) { alert("Folder pic1/ is empty or has no images."); return; }
+
+    let detected = 0;
+    const now = new Date();
+
+    data.results.forEach(result => {
+      const m = result.filename.match(/(\d+)/);
+      const idx = m ? parseInt(m[1]) - 1 : null;
+      const cd  = (idx !== null) ? cellData[idx] : null;
+      const road = cd && cd.road;
+      if (!road) return;
+
+      const existingId = cd.potholeId;
+      const { severity, sizeCm, depthCm, conf, annotatedImage, totalBoxes } = result;
+
+      if (!result.detected) {
+        if (existingId) {
+          const ei = allData.findIndex(d => d.id === existingId);
+          if (ei !== -1) allData.splice(ei, 1);
+          const mkr = markersById[existingId];
+          if (mkr) { map.removeLayer(mkr); delete markersById[existingId]; }
+          delete cd.potholeId; cd.result = null;
+const cell = document.querySelector(`.vid-cell[data-idx="${idx}"]`);
+          if (cell) { const b = cell.querySelector('.result-badge'); if (b) b.remove(); }
+        }
+        return;
+      }
+
+      if (existingId) {
+        const existing = allData.find(d => d.id === existingId);
+        if (existing) {
+          const prevSev = existing.severity;
+          Object.assign(existing, { severity, sizeCm, depthCm, conf, totalBoxes,
+            imageData: annotatedImage,
+            date: now.toISOString().slice(0,10), time: now.toTimeString().slice(0,5) });
+          const mkr = markersById[existingId];
+          if (mkr) { if (prevSev !== severity) mkr.setIcon(buildIcon(severity)); mkr.setPopupContent(popupHTML(existing)); }
+          cd.result = { severity };
+          if (annotatedImage) injectImageIntoCell(idx, annotatedImage, road, severity);
+          detected++;
+        }
+      } else {
+        const loc = cd.location;
+        const lat = loc ? loc.lat + (Math.random()-.5)*0.0005 : 10.78 + Math.random()*0.02;
+        const lng = loc ? loc.lng + (Math.random()-.5)*0.0005 : 106.69 + Math.random()*0.02;
+        const item = { id: Date.now() + detected, _trained: true, lat, lng, road,
+          date: now.toISOString().slice(0,10), time: now.toTimeString().slice(0,5),
+          sizeCm, depthCm, severity, conf, totalBoxes, imageData: annotatedImage };
+        allData.push(item); cd.potholeId = item.id; cd.result = { severity };
+        const marker = L.marker([lat, lng], { icon: buildIcon(severity) })
+          .addTo(map).bindPopup(popupHTML(item));
+        marker.on('click', () => selectItem(item.id, false));
+        markersById[item.id] = marker;
+        if (annotatedImage) injectImageIntoCell(idx, annotatedImage, road, severity);
+        detected++;
+      }
+    });
+
+    saveDB(); saveCells(); renderStats(allData); renderList();
+    alert(`AUTO complete: ${detected}/${data.results.length} potholes detected.`);
+
+  } catch(err) {
+    alert(`AUTO error: ${err.message}`);
+  }
+
+  btn.style.opacity = ''; btn.style.pointerEvents = '';
+  btn.innerHTML = btn.innerHTML.replace('Running...', 'AUTO');
+}
+
+async function callDetectAPI(mediaUrl, mediaType) {
+  const blob = await fetch(mediaUrl).then(r => r.blob());
+  const form = new FormData();
+  form.append("file", blob, "frame.jpg");
+  const r = await fetch(`${API_URL}/detect`, { method: "POST", body: form });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function appendLog(el, msg) {
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function openLightbox(itemId) {
+  const item = allData.find(d => String(d.id) === String(itemId));
+  if (!item || !item.imageData) return;
+  document.getElementById('lightboxImg').src = item.imageData;
+  document.getElementById('lightboxRoad').textContent = item.road + ' — ' + SEV_LABEL[item.severity];
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+}
+
+function resizeToBase64(url, maxW, maxH) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width, maxH / img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.78));
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+function videoFrameToBase64(url, maxW, maxH) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.onloadeddata = () => { video.currentTime = Math.min(0.5, video.duration * 0.1 || 0.1); };
+    video.onseeked = () => {
+      const w = video.videoWidth  || maxW;
+      const h = video.videoHeight || maxH;
+      const scale = Math.min(1, maxW / w, maxH / h);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(w * scale);
+      canvas.height = Math.round(h * scale);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.78));
+      video.src = '';
+    };
+    video.onerror = () => resolve(null);
+    video.src = url;
+  });
+}
+
+async function captureMediaThumbnail(url, type) {
+  try {
+    return type === 'image'
+      ? await resizeToBase64(url, 480, 360)
+      : await videoFrameToBase64(url, 480, 270);
+  } catch(e) { return null; }
+}
+
+async function captureMediaFull(url, type) {
+  try {
+    return type === 'image'
+      ? await resizeToBase64(url, 960, 720)
+      : await videoFrameToBase64(url, 960, 720);
+  } catch(e) { return null; }
+}
+
+function openTrainModal() {
+  // Restore actions buttons (may have been replaced after previous train)
+  document.getElementById('trainActions').innerHTML = `
+    <button class="btn-cancel" onclick="closeTrainModal()">Cancel</button>
+    <button class="btn-start-train" id="btnStartTrain" onclick="startTrain()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+        <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+      </svg>
+      Start detection
+    </button>`;
+
+  const loaded = Object.entries(cellData).filter(([,d]) => d.mediaUrl);
+  const ready  = loaded.filter(([,d]) => d.road);
+  const src = document.getElementById('trainSources');
+
+  if (loaded.length === 0) {
+    src.innerHTML = `<div class="train-no-data">No images/videos loaded yet.<br>Please add media to the CAM cells first.</div>`;
+  } else {
+    src.innerHTML = `<div class="train-src-header">${ready.length}/${loaded.length} cells ready (road selection required)</div>
+      <div class="train-src-list">${loaded.map(([idx, d]) => `
+<div class="train-src-item ${d.road ? 'ready' : 'not-ready'}">
+          <span class="tsrc-cam">CAM ${String(parseInt(idx)+1).padStart(2,'0')}</span>
+          <span style="flex:none;font-size:11px">${d.mediaType==='image'?'🖼':'▶'}</span>
+          <span class="tsrc-road">${d.road || '— no road selected —'}</span>
+          <span class="tsrc-ok">${d.road ? '✓' : '!'}</span>
+        </div>`).join('')}
+      </div>`;
+  }
+
+  const btn = document.getElementById('btnStartTrain');
+  btn.disabled = ready.length === 0;
+  btn.style.opacity = ready.length === 0 ? '0.4' : '1';
+  btn.style.cursor  = ready.length === 0 ? 'not-allowed' : 'pointer';
+  btn.textContent   = ready.length > 0 ? `Start detection (${ready.length} cells)` : 'Start detection';
+
+  document.getElementById('trainOverlay').classList.add('open');
+  document.getElementById('trainProgress').classList.remove('show');
+  document.getElementById('trainActions').style.display = '';
+  document.getElementById('progFill').style.width = '0%';
+  document.getElementById('progPct').textContent = '0%';
+  document.getElementById('progLog').textContent = '';
+  document.getElementById('progLabel').textContent = 'Ready...';
+}
+
+function confirmResetDB() {
+  const trained = allData.filter(d => d._trained).length;
+  if (trained === 0) { alert('No results to delete.'); return; }
+  if (!confirm(`Delete ${trained} detection points from the map and database?\n\nImages & road names in CAM cells will be preserved.`)) return;
+
+  // Remove markers from map
+  allData.filter(d => d._trained).forEach(d => {
+    const mkr = markersById[d.id];
+    if (mkr) { map.removeLayer(mkr); delete markersById[d.id]; }
+  });
+  // Remove from allData
+  allData = allData.filter(d => !d._trained);
+
+  // Clear potholeId + result from cellData
+  Object.values(cellData).forEach(d => {
+    if (d) { d.potholeId = null; d.result = null; }
+  });
+  // Remove result badges from CAM cells
+  document.querySelectorAll('.result-badge').forEach(el => el.remove());
+
+  fetch(`${API_URL}/db`, { method: 'DELETE' }).catch(() => {});
+  saveCells();
+  renderStats(allData);
+  renderList();
+}
+
+function bulkUpload() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*,video/*';
+  input.multiple = true;
+  input.onchange = () => loadFilesIntoGrid(Array.from(input.files));
+  input.click();
+}
+
+function loadFilesIntoGrid(files) {
+  if (!files.length) return;
+  const total = adminCols * adminRows;
+  let filled = 0;
+  const usedSlots = new Set();
+  const unmatched = [];
+
+  // Pass 1: match by number in filename (CAM1.png → slot 0, CAM2 → slot 1...)
+  files.forEach(file => {
+    const m = file.name.match(/(\d+)/);
+    if (m) {
+      const idx = parseInt(m[1]) - 1;
+      if (idx >= 0 && idx < total) {
+        const cell = document.querySelector(`.vid-cell[data-idx="${idx}"]`);
+        if (cell) {
+          const type = file.type.startsWith('image/') ? 'image' : 'video';
+loadMediaInCell(cell, URL.createObjectURL(file), type);
+          usedSlots.add(idx);
+          filled++;
+          return;
+        }
+      }
+    }
+    unmatched.push(file);
+  });
+
+  // Pass 2: files without a number match → fill empty slots in order
+  if (unmatched.length) {
+    const emptySlots = [];
+    for (let i = 0; i < total; i++) {
+      if (usedSlots.has(i)) continue;
+      const d = cellData[i];
+      if (!d || !d.mediaUrl) emptySlots.push(i);
+    }
+    unmatched.slice(0, emptySlots.length).forEach((file, i) => {
+      const cell = document.querySelector(`.vid-cell[data-idx="${emptySlots[i]}"]`);
+      if (cell) {
+        loadMediaInCell(cell, URL.createObjectURL(file), file.type.startsWith('image/') ? 'image' : 'video');
+        filled++;
+      }
+    });
+  }
+}
+
+function closeTrainModal() {
+  document.getElementById('trainOverlay').classList.remove('open');
+  document.getElementById('trainBtn').classList.remove('running');
+}
+
+document.getElementById('trainOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeTrainModal();
+});
+
+async function startTrain() {
+  const ready = Object.entries(cellData).filter(([,d]) => d.road && d.mediaUrl);
+  if (!ready.length) return;
+
+  const modelId = document.getElementById('trainModel').value;
+  document.getElementById('trainActions').style.display = 'none';
+  document.getElementById('trainProgress').classList.add('show');
+  document.getElementById('trainBtn').classList.add('running');
+
+  const logEl = document.getElementById('progLog');
+  const fill  = document.getElementById('progFill');
+  const pct   = document.getElementById('progPct');
+  const lbl   = document.getElementById('progLabel');
+  let detected = 0;
+
+  appendLog(logEl, `Model: ${modelId.toUpperCase()}`);
+  appendLog(logEl, `Sending ${ready.length} images to API...`);
+
+  for (let processed = 0; processed < ready.length; processed++) {
+    const [idx, data] = ready[processed];
+    const camNum = String(parseInt(idx) + 1).padStart(2, '0');
+    lbl.textContent = `Analyzing CAM ${camNum}...`;
+
+    try {
+      const result     = await callDetectAPI(data.mediaUrl, data.mediaType);
+      const now        = new Date();
+      const cell       = document.querySelector(`.vid-cell[data-idx="${idx}"]`);
+      const existingId = data.potholeId;
+      const imageData  = result.annotatedImage
+                       || await captureMediaThumbnail(data.mediaUrl, data.mediaType);
+      const tag        = result.mock ? ' [mock]' : '';
+
+      if (!result.detected) {
+        /* ── Not detected ── */
+        if (existingId) {
+          const ei = allData.findIndex(d => d.id === existingId);
+          if (ei !== -1) allData.splice(ei, 1);
+          const mkr = markersById[existingId];
+          if (mkr) { map.removeLayer(mkr); delete markersById[existingId]; }
+          delete cellData[parseInt(idx)].potholeId;
+          cellData[parseInt(idx)].result = null;
+if (cell) { const b = cell.querySelector('.result-badge'); if (b) b.remove(); }
+          appendLog(logEl, `[CAM${camNum}] ${data.road} → Not detected (removed)${tag}`);
+        } else {
+          appendLog(logEl, `[CAM${camNum}] ${data.road} → No potholes detected${tag}`);
+        }
+
+      } else if (existingId) {
+        /* ── Update existing entry ── */
+        const { severity, sizeCm, depthCm, conf } = result;
+        const existing = allData.find(d => d.id === existingId);
+        if (existing) {
+          const prevSev = existing.severity;
+          Object.assign(existing, {
+            severity, sizeCm, depthCm, imageData,
+            conf: result.conf, totalBoxes: result.totalBoxes || 1,
+            date: now.toISOString().slice(0, 10),
+            time: now.toTimeString().slice(0, 5)
+          });
+          const mkr = markersById[existingId];
+          if (mkr) {
+            if (prevSev !== severity) mkr.setIcon(buildIcon(severity));
+            mkr.setPopupContent(popupHTML(existing));
+          }
+          cellData[parseInt(idx)].result = { severity };
+          if (cell) attachResultBadge(cell, { severity });
+          const sl = { nhe:'minor', vua:'moderate', nang:'severe' }[severity];
+          appendLog(logEl, `[CAM${camNum}] ${data.road} → UPDATED: ${sl} ${sizeCm}cm conf=${conf}${tag}`);
+          detected++;
+        }
+
+      } else {
+        /* ── Add new ── */
+        const { severity, sizeCm, depthCm, conf } = result;
+        const loc = data.location;
+        const lat = loc ? loc.lat + (Math.random() - .5) * 0.0005 : 10.78 + Math.random() * 0.02;
+        const lng = loc ? loc.lng + (Math.random() - .5) * 0.0005 : 106.69 + Math.random() * 0.02;
+        const item = {
+          id: Date.now() + processed, _trained: true,
+          lat, lng, road: data.road,
+          date: now.toISOString().slice(0, 10),
+          time: now.toTimeString().slice(0, 5),
+          sizeCm, depthCm, severity, imageData,
+          conf: result.conf, totalBoxes: result.totalBoxes || 1
+        };
+        allData.push(item);
+        cellData[parseInt(idx)].potholeId = item.id;
+
+        const marker = L.marker([lat, lng], { icon: buildIcon(severity) })
+          .addTo(map).bindPopup(popupHTML(item));
+        marker.on('click', () => selectItem(item.id, false));
+        markersById[item.id] = marker;
+
+        cellData[parseInt(idx)].result = { severity };
+        if (cell) attachResultBadge(cell, { severity });
+        const sl = { nhe:'minor', vua:'moderate', nang:'severe' }[severity];
+        appendLog(logEl, `[CAM${camNum}] ${data.road} → NEW: ${sl} ${sizeCm}cm conf=${conf}${tag}`);
+        detected++;
+      }
+
+    } catch (err) {
+      appendLog(logEl, `[CAM${camNum}] ✗ API error: ${err.message}`);
+    }
+
+    const p = Math.round((processed + 1) / ready.length * 100);
+    fill.style.width = p + '%'; pct.textContent = p + '%';
+  }
+
+  /* ── Complete ── */
+  fill.style.width = '100%'; pct.textContent = '100%';
+lbl.textContent = `Complete — ${detected} potholes detected`;
+  appendLog(logEl, `✓ Saved ${detected} points to database.`);
+  saveDB(); saveCells(); renderStats(allData); renderList();
+  document.getElementById('trainActions').innerHTML =
+    '<button class="btn-cancel" onclick="closeTrainModal()">Close</button>';
+  document.getElementById('trainActions').style.display = '';
+  document.getElementById('trainBtn').classList.remove('running');
+}
+</script>
+
+</body>
+</html>
