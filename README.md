@@ -5,13 +5,14 @@
 
 ---
 
-## 👥 Team Members & Advisors
+## 👥 Team
 
-### Group 7
+| Name | Role |
+| --- | --- |
+| Hồ Trần Châu Thảo | Project Leader |
+| Võ Nguyễn Trọng Phú | Technical Developer & Lead Researcher |
+| Phạm Minh Long | AI Researcher |
 
-* **Hồ Trần Châu Thảo** — *Leader*
-* **Phạm Minh Long**
-* **Võ Nguyễn Trọng Phú**
 
 ### Advisors
 
