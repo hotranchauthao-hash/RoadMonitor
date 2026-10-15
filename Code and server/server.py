@@ -61,6 +61,8 @@ app.add_middleware(
 SEV_AREA_NANG = 5.0   # >= this threshold → nang (severe)
 SEV_AREA_VUA  = 1.5   # >= this threshold → vua (moderate); below → nhe (minor)
 
+CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.40"))
+
 SEV_COLORS = {
     "nhe":  (244, 196,  48),   # yellow
     "vua":  (255, 140,  66),   # orange
@@ -254,13 +256,16 @@ async def auto_detect(folder: str = "pic1"):
             else:
                 res = model(img, verbose=False)[0]
                 if len(res.boxes) > 0:
-                    detections = []
-                    for box in res.boxes:
-                        x1,y1,x2,y2 = box.xyxy[0].tolist()
-                        conf = float(box.conf[0])
-                        area_pct = (x2-x1)*(y2-y1)/(img_w*img_h)*100
-                        detections.append({"box":[x1,y1,x2,y2],"conf":conf,
-                            "area_pct":area_pct,"severity":classify_severity(area_pct)})
+                        detections = []
+    for box in results.boxes:
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+        conf     = float(box.conf[0])
+        if conf < CONF_THRESHOLD:
+            continue
+        area_pct = (x2 - x1) * (y2 - y1) / (img_w * img_h) * 100
+        sev      = classify_severity(area_pct)
+        detections.append({"box": [x1, y1, x2, y2], "conf": conf,
+                            "area_pct": area_pct, "severity": sev})
                     detections.sort(key=lambda d: d["conf"], reverse=True)
                     best = detections[0]
                     size_cm  = max(10, int(best["area_pct"] * 5.5))
