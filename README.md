@@ -66,6 +66,41 @@ $$\text{Risk Score} = \text{Total pothole points}$$
 | **mAP50** | 0.66 |
 | **mAP50-95** | 0.43 |
 
+
+
+## 🚀 Setup & Usage
+
+### Prerequisites
+- Python 3.9+
+- A trained model weight file (`best.pt`) placed in the `AI Train/` folder
+
+### Installation
+
+```bash
+cd "Code and server"
+pip install -r requirements.txt
+```
+
+### Running the Server
+
+```bash
+python server.py
+```
+
+The dashboard will be available at `http://localhost:8000`.
+
+### Auto-Detection Mode
+
+To run batch detection on a folder of images:
+```bash
+# Place images in a folder named "pic1" next to server.py, then open:
+http://localhost:8000  → Admin Panel → Auto Train
+```
+
+### Mock Mode
+
+If `best.pt` is not present, the server runs in **mock mode** — returning simulated detections so the dashboard can be tested without a trained model.
+
 ---
 
 ## ⚠️ Limitations & Future Works
