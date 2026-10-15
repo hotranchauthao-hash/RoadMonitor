@@ -56,6 +56,38 @@ $$\text{Risk Score} = \text{Total pothole points}$$
 
 
 
+## 🏗️ System Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Frontend                       │
+│         road_ai_monitor.html                     │
+│  • Leaflet.js map with severity markers          │
+│  • Live detection feed (sidebar)                 │
+│  • Admin panel: CCTV grid + drag-and-drop upload │
+│  • Auto-train modal with progress tracking       │
+└────────────────────┬────────────────────────────┘
+                     │ REST API (HTTP/JSON)
+┌────────────────────▼────────────────────────────┐
+│                FastAPI Backend                   │
+│                  server.py                       │
+│  POST /detect   — single image inference         │
+│  POST /auto     — batch folder inference         │
+│  GET  /db       — load detection history         │
+│  PUT  /db       — save detection history         │
+│  GET  /health   — model status check             │
+└────────────────────┬────────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────────┐
+│              YOLOv8n Model (best.pt)             │
+│  • Trained on 665 road images                    │
+│  • Classifies severity: Minor / Moderate / Severe│
+│  • Returns bounding boxes + confidence scores    │
+└─────────────────────────────────────────────────┘
+```
+
+
+
 ### 📊 Model Performance Metrics
 
 | Metric | Value |
