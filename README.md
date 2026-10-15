@@ -75,6 +75,8 @@ $$\text{Risk Score} = \text{Total pothole points}$$
 │  POST /auto     — batch folder inference         │
 │  GET  /db       — load detection history         │
 │  PUT  /db       — save detection history         │
+│  DELETE /db     — clear detection history        │
+│  GET  /stats    — detection summary by severity  │
 │  GET  /health   — model status check             │
 └────────────────────┬────────────────────────────┘
                      │
