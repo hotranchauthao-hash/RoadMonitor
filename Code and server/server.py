@@ -130,6 +130,16 @@ def db_clear():
     save_db([])
     return {"cleared": True}
 
+@app.get("/stats")
+def db_stats():
+    items = load_db()
+    counts = {"total": len(items), "nhe": 0, "vua": 0, "nang": 0}
+    for item in items:
+        sev = item.get("severity")
+        if sev in counts:
+            counts[sev] += 1
+    return counts
+
 
 @app.post("/detect")
 async def detect(file: UploadFile = File(...)):
