@@ -58,8 +58,8 @@ app.add_middleware(
 # ── Severity thresholds ────────────────────────────────────────────────────
 # Bounding-box area relative to the full image (%).
 # Adjust after real camera calibration.
-SEV_AREA_VUA  = 5.0   # >= vua threshold → severe
-SEV_AREA_NHE  = 1.5   # >= nhe threshold → moderate; < nhe → minor
+SEV_AREA_NANG = 5.0   # >= this threshold → nang (severe)
+SEV_AREA_VUA  = 1.5   # >= this threshold → vua (moderate); below → nhe (minor)
 
 SEV_COLORS = {
     "nhe":  (244, 196,  48),   # yellow
@@ -69,9 +69,9 @@ SEV_COLORS = {
 
 
 def classify_severity(area_pct: float) -> str:
-    if area_pct >= SEV_AREA_VUA:
+    if area_pct >= SEV_AREA_NANG:
         return "nang"
-    if area_pct >= SEV_AREA_NHE:
+    if area_pct >= SEV_AREA_VUA:
         return "vua"
     return "nhe"
 
@@ -246,7 +246,7 @@ async def auto_detect(folder: str = "pic1"):
                         conf = float(box.conf[0])
                         area_pct = (x2-x1)*(y2-y1)/(img_w*img_h)*100
                         detections.append({"box":[x1,y1,x2,y2],"conf":conf,
-"area_pct":area_pct,"severity":classify_severity(area_pct)})
+                            "area_pct":area_pct,"severity":classify_severity(area_pct)})
                     detections.sort(key=lambda d: d["conf"], reverse=True)
                     best = detections[0]
                     size_cm  = max(10, int(best["area_pct"] * 5.5))
