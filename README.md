@@ -148,6 +148,24 @@ http://localhost:8000  → Admin Panel → Auto Train
 
 If `best.pt` is not present, the server runs in **mock mode** — returning simulated detections so the dashboard can be tested without a trained model.
 
+
+
+## 📁 Folder Structure
+
+```
+RoadMonitor/
+├── AI Train/
+│   ├── best.pt          # Best YOLO model weights
+│   └── last.pt          # Last checkpoint weights
+├── Code and server/
+│   ├── road_ai_monitor.html  # Frontend dashboard
+│   ├── server.py             # FastAPI backend
+│   └── requirements.txt      # Python dependencies
+├── Slide/
+│   └── Nhóm 7.mp4       # Project presentation video
+└── README.md
+```
+
 ---
 
 ## ⚠️ Limitations & Future Works
