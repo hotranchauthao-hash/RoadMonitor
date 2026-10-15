@@ -209,6 +209,9 @@ async def detect(file: UploadFile = File(...)):
 
 @app.post("/auto")
 async def auto_detect(folder: str = "pic1"):
+    # Prevent path traversal: only allow simple folder names, no slashes or dots
+    if not folder or "/" in folder or "\\" in folder or folder.startswith("."):
+        raise HTTPException(400, "Invalid folder name")
     folder_path = Path(folder)
     if not folder_path.exists() or not folder_path.is_dir():
         raise HTTPException(404, f"Folder '{folder}' does not exist next to server.py")
