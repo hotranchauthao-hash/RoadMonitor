@@ -1,9 +1,9 @@
 # Road AI Monitor — Python dependencies
 # Install with: python -m pip install -r requirements.txt
 
-fastapi>=0.104.0,<1.0.0
-uvicorn[standard]>=0.24.0,<1.0.0
-ultralytics>=8.0.0,<9.0.0
-pillow>=10.0.0,<12.0.0
-python-multipart>=0.0.6,<1.0.0
-numpy>=1.24.0,<3.0.0
+fastapi>=0.104.0,<1.0.0          # Web framework for the REST API
+uvicorn[standard]>=0.24.0,<1.0.0 # ASGI server to run FastAPI
+ultralytics>=8.0.0,<9.0.0        # YOLO26n model inference
+pillow>=10.0.0,<12.0.0           # Image loading and annotation
+python-multipart>=0.0.6,<1.0.0   # Required for file upload (multipart/form-data)
+numpy>=1.24.0,<3.0.0             # Numerical operations (used by ultralytics)
