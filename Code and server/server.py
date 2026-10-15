@@ -110,11 +110,12 @@ def index():
 def health():
     return {
         "status": "ok",
+        "version": app.version,
         "model_path": str(MODEL_PATH),
         "model_loaded": model is not None,
         "mode": "real" if model else "mock",
+        "db_records": len(load_db()),
     }
-
 
 @app.get("/db")
 def db_get():
