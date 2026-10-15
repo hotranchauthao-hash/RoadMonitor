@@ -159,3 +159,16 @@ If `best.pt` is not present, the server runs in **mock mode** — returning simu
 3. **World Health Organization (WHO)** & **UNEP** (*Joint Report on Non-Exhaust Emissions*).
 4. **UC Riverside (CE-CERT)** (*Eco-Routing Frameworks*).
 
+
+
+## 🤝 Contributing
+
+Contributions are welcome! To contribute:
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -m 'Add your feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
+
+Please ensure your code follows the existing style and that the server starts without errors before submitting.
