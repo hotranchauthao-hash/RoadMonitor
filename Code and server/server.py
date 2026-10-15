@@ -147,6 +147,9 @@ def db_stats():
 @app.post("/detect")
 async def detect(file: UploadFile = File(...)):
     raw = await file.read()
+    MAX_SIZE_MB = 10
+    if len(raw) > MAX_SIZE_MB * 1024 * 1024:
+        raise HTTPException(413, f"Image too large. Maximum size is {MAX_SIZE_MB}MB.")
     try:
         img = Image.open(io.BytesIO(raw)).convert("RGB")
     except Exception:
