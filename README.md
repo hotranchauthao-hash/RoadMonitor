@@ -23,9 +23,9 @@
 ## 📌 Problem & Inspiration
 
 * **Environmental & Traffic Impact:**
-* Increases fuel consumption by **3% to 5%** due to sudden braking and stop-and-go driving.
-* Causes a **25% to 45%** surge in $\text{CO}_2$ emissions per kilometer.
-* Contributes to **40% to 60%** of urban PM2.5 pollution.
+  * Increases fuel consumption by **3% to 5%** due to sudden braking and stop-and-go driving.
+  * Causes a **25% to 45%** surge in $\text{CO}_2$ emissions per kilometer.
+  * Contributes to **40% to 60%** of urban PM2.5 pollution.
 
 
 * **Inspiration:** Preventable road hazards cause unnecessary pain and frustration to loved ones. Beyond saving lives, mitigating these hazards improves overall living quality and the environment.
