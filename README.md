@@ -40,6 +40,19 @@
 
 ---
 
+## 🧰 Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| **Frontend** | HTML5, CSS3, JavaScript (Vanilla) |
+| **Map** | Leaflet.js 1.9.4 |
+| **Backend** | Python 3.9+, FastAPI |
+| **AI Model** | YOLO26n (via Ultralytics) |
+| **Image Processing** | Pillow (PIL) |
+| **Server** | Uvicorn (ASGI) |
+| **Data Storage** | JSON flat-file (`db.json`) |
+
+
 ## 🛠️ Data & AI Architecture
 
 * **Dataset:** 665 public dataset images (Split: **70% Train / 20% Val / 10% Test**)
