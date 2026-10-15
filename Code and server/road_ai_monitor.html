@@ -16,8 +16,8 @@
     --panel-2: #2D2D2D;
     --border: #404040;
     --text: #ffffff;
-    --text-muted: #ffffff;
-    --text-dim: #ffffff;
+    --text-muted: #A0A8B8;
+    --text-dim: #6B7280;
 
     --sev-nhe: #F4C430;
     --sev-nhe-soft: rgba(244,196,48,0.16);
@@ -980,7 +980,17 @@ function handleMapClick(e) {
   }
   saveCells();
 }
-function addLegend() {}
+function addLegend() {
+  const legend = document.createElement('div');
+  legend.className = 'legend';
+  legend.innerHTML = `
+    <h4>Severity</h4>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--sev-nhe)"></span>Minor pothole</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--sev-vua)"></span>Moderate pothole</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--sev-nang);box-shadow:0 0 6px rgba(255,59,59,0.6)"></span>Severe pothole</div>
+  `;
+  document.querySelector('.body-row').appendChild(legend);
+}
 
 function renderList() {
   const feed = document.getElementById("feed");
