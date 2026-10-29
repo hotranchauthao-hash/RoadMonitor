@@ -10,7 +10,7 @@
 | Name | Role |
 | --- | --- |
 | Hồ Trần Châu Thảo | Project Leader |
-| Võ Nguyễn Trọng Phú | Technical Developer & Lead Researcher |
+| Võ Nguyễn Trọng Phú | Technical Lead & Primary ML Engineer |
 | Phạm Minh Long | AI Researcher |
 
 
