@@ -16,6 +16,7 @@
 
 ### Advisors
 
+* **Lê Mỹ Hà**
 * **Trịnh Trần Quốc Bảo**
 * **Âu Đoàn Trung**
 
