@@ -9,9 +9,9 @@
 
 | Name | Role |
 | --- | --- |
-| Hồ Trần Châu Thảo | Project Leader |
+| Hồ Trần Châu Thảo | Project Leader & UI/UX Designer|
 | Võ Nguyễn Trọng Phú | Technical Lead & Primary ML Engineer |
-| Phạm Minh Long | AI Researcher |
+| Phạm Minh Long | AI Researcher & Co-Programmer|
 
 
 ### Advisors
